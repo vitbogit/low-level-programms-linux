@@ -1,0 +1,1 @@
+static const char *TMP_HEADER_FILE_NAME = "temp_header";
