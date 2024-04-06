@@ -1,0 +1,59 @@
+#include <iostream>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
+#include <chrono>
+
+using namespace std;
+
+mutex mtx;
+condition_variable cv_west, cv_east, cv_rope;
+int direction; // 0 - empty, 1 - west, 2 - east
+
+void west_monkey() {
+    unique_lock<mutex> lock(mtx);
+    while ((direction != 0) && (direction != 1)) {
+        cv_west.wait(lock);
+    }
+    if (direction == 0 || direction == 1) {
+        direction = 1;
+        cout << "West monkey entered the rope" << endl;
+        cv_rope.notify_one();
+        lock.unlock();
+        this_thread::sleep_for(chrono::seconds(1));
+        lock.lock();
+        cout << "West monkey left the rope" << endl;
+        direction = 0;
+        cv_rope.notify_one();
+    }
+    lock.unlock();
+}
+
+void east_monkey() {
+    unique_lock<mutex> lock(mtx);
+    while ((direction != 0) && (direction != 2)) {
+        cv_east.wait(lock);
+    }
+    if (direction == 0 || direction == 2) {
+        direction = 2;
+        cout << "East monkey entered the rope" << endl;
+        cv_rope.notify_one();
+        lock.unlock();
+        this_thread::sleep_for(chrono::seconds(1));
+        lock.lock();
+        cout << "East monkey left the rope" << endl;
+        direction = 0;
+        cv_rope.notify_one();
+    }
+    lock.unlock();
+}
+
+int main() {
+    thread thread_west_monkey(west_monkey);
+    thread thread_east_monkey(east_monkey);
+
+    thread_west_monkey.join();
+    thread_east_monkey.join();
+
+    return 0;
+}

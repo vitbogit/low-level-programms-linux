@@ -1,0 +1,68 @@
+#include <iostream>
+#include <semaphore.h>
+#include <pthread.h>
+#include <unistd.h>
+
+using namespace std;
+
+sem_t sem_west, sem_east, sem_rope;
+int direction; // 0 - empty, 1 - west, 2 - east
+
+void* west_monkey(void* arg) {
+    while (true) {
+        sem_wait(&sem_rope);
+        sem_wait(&sem_west);
+        if (direction == 0 || direction == 1) {
+            direction = 1;
+            cout << "West monkey entered the rope" << endl;
+            sem_post(&sem_west);
+            sem_post(&sem_rope);
+            sleep(1);
+            cout << "West monkey left the rope" << endl;
+            direction = 0;
+            sem_post(&sem_rope);
+        } else {
+            sem_post(&sem_west);
+            sem_post(&sem_rope);
+        }
+    }
+}
+
+void* east_monkey(void* arg) {
+    while (true) {
+        sem_wait(&sem_rope);
+        sem_wait(&sem_east);
+        if (direction == 0 || direction == 2) {
+            direction = 2;
+            cout << "East monkey entered the rope" << endl;
+            sem_post(&sem_east);
+            sem_post(&sem_rope);
+            sleep(1);
+            cout << "East monkey left the rope" << endl;
+            direction = 0;
+            sem_post(&sem_rope);
+        } else {
+            sem_post(&sem_east);
+            sem_post(&sem_rope);
+        }
+    }
+}
+
+int main() {
+    sem_init(&sem_west, 0, 1);
+    sem_init(&sem_east, 0, 1);
+    sem_init(&sem_rope, 0, 1);
+
+    pthread_t thread_west_monkey, thread_east_monkey;
+    pthread_create(&thread_west_monkey, NULL, west_monkey, NULL);
+    pthread_create(&thread_east_monkey, NULL, east_monkey, NULL);
+
+    pthread_join(thread_west_monkey, NULL);
+    pthread_join(thread_east_monkey, NULL);
+
+    sem_destroy(&sem_west);
+    sem_destroy(&sem_east);
+    sem_destroy(&sem_rope);
+
+    return 0;
+}
