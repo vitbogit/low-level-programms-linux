@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <chrono>
+#include <cmath>
 
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -22,6 +23,7 @@ struct ThreadData {
     int width;
     int height;
     int startRow;
+    int rowsCount;
     int endRow;
 };
 
@@ -37,7 +39,7 @@ unsigned char* loadPNGImage(const char* filename, int& width, int& height) {
     // cout << "length of stbi_load() result:" << strlen((const char*)image) << endl;
     //  cout << "bogdan test:" << image[100] << endl;
 
-    // cout << "length of stbi_load() result:" << sizeof(image) << endl;
+//    cout << "length of stbi_load() result:" << sizeof(image) << endl;
 
     return image;
 }
@@ -48,7 +50,7 @@ void* sobelFilterThread(void* arg) {
     int sobelX[] = {-1, 0, 1, -2, 0, 2, -1, 0, 1};
     int sobelY[] = {-1, -2, -1, 0, 0, 0, 1, 2, 1};
 
-    for (int y = data->startRow + 1; y < data->endRow - 1; y++) {
+    for (int y = data->startRow; y < data->endRow ; y++) {
         for (int x = 1; x < data->width - 2; x++) {
             int sumX = 0;
             int sumY = 0;
@@ -56,6 +58,8 @@ void* sobelFilterThread(void* arg) {
             for (int j = -1; j <= 1; j++) {
                 for (int i = -1; i <= 1; i++) {
                     int index = ((y + j) * data->width + (x + i)) * 3;
+                    if (index < 0) continue;
+                    if (index > (data->width)*(data->height)*3-1) continue;
                     sumX += data->image[index] * sobelX[(j + 1) * 3 + (i + 1)];
                     sumY += data->image[index] * sobelY[(j + 1) * 3 + (i + 1)];
                 }
@@ -81,9 +85,15 @@ void sobelFilter(unsigned char* image, int width, int height, int numThreads) {
         threadData[i].output = output;
         threadData[i].width = width;
         threadData[i].height = height;
-        threadData[i].startRow = i * (height / numThreads);
-        threadData[i].endRow = (i + 1) * (height / numThreads);
-
+        threadData[i].rowsCount = numThreads;
+        if (i!=numThreads-1 || i == 0){ // 
+            threadData[i].startRow = i * floor(height / numThreads);
+            threadData[i].endRow = (i + 1) * floor(height / numThreads);
+        } else{
+            threadData[i].startRow = (i - 1) * floor(height / numThreads);
+            threadData[i].endRow = height;
+        }
+       
         pthread_create(&threads[i], NULL, sobelFilterThread, &threadData[i]);
     }
 
